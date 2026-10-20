@@ -1,0 +1,30 @@
+{
+  "name": "oja",
+  "version": "0.1.0",
+  "description": "Oja — an AI salesperson that takes buyers from question to paid with PayPal, in one chat.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/flow.test.js"
+  },
+  "keywords": [
+    "paypal",
+    "ai",
+    "agent",
+    "agentic-commerce",
+    "gemini",
+    "hackathon"
+  ],
+  "author": "Idoko Daniel",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "express": "^4.22.3",
+    "qrcode": "^1.5.4"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}
