@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { config } from './config.js';
-import { getProduct } from './catalog.js';
+import { getProduct, toNgn } from './catalog.js';
 
 // Simple in-memory store, snapshotted to disk so a restart doesn't wipe the demo.
 const DATA_DIR = path.resolve(process.env.OJA_DATA_DIR || 'data');
@@ -100,7 +100,7 @@ export function cartTotals(cart) {
     .map(({ productId, qty }) => {
       const p = getProduct(productId);
       if (!p) return null;
-      return { productId, name: p.name, unitPrice: p.price, qty, lineTotal: round(p.price * qty) };
+      return { productId, name: p.name, unitPrice: p.price, unitPriceNgn: p.priceNgn, qty, lineTotal: round(p.price * qty), lineTotalNgn: p.priceNgn * qty };
     })
     .filter(Boolean);
   const subtotal = round(items.reduce((s, i) => s + i.lineTotal, 0));
@@ -111,6 +111,10 @@ export function cartTotals(cart) {
     subtotal,
     shipping,
     total: round(subtotal + shipping),
+    // Naira reference amounts (checkout itself is in USD).
+    subtotalNgn: items.reduce((s, i) => s + i.lineTotalNgn, 0),
+    shippingNgn: toNgn(shipping),
+    totalNgn: items.reduce((s, i) => s + i.lineTotalNgn, 0) + toNgn(shipping),
     currency: config.store.currency,
     freeShippingFrom: config.store.freeShippingFrom,
   };
@@ -132,6 +136,7 @@ export function createOrderRecord(session, totals, extra = {}) {
     subtotal: totals.subtotal,
     shipping: totals.shipping,
     total: totals.total,
+    totalNgn: totals.totalNgn,
     currency: totals.currency,
     paypalOrderId: null,
     invoiceId: null,

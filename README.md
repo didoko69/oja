@@ -2,7 +2,7 @@
 
 **Oja** (Yoruba for *market*) is an AI salesperson for small online stores. A buyer describes what they need in plain words. Oja finds the right products, compares them, builds the cart, and takes payment with **PayPal** — without the buyer leaving the conversation. The seller gets a dashboard with every order, every chat, and AI-written insights about what buyers want.
 
-Built for the **PayPal AI Hackathon 2026**. Demo store: **Danzora**, a gadget store in Nigeria.
+Built for the **PayPal AI Hackathon 2026**. Demo store: **Danzora**, a gadget store in Nigeria, with real products at real Nigerian prices.
 
 <p>
   <img src="docs/screenshots/chat-search.png" alt="Oja recommending phones in the chat" width="240">
@@ -19,7 +19,8 @@ Small online sellers in Nigeria and other emerging markets sell mostly through c
 ## What Oja does
 
 **For buyers**
-- Understands needs, not just keywords: *"a phone under $250 with a good camera for content"*.
+- Understands needs and naira budgets, not just keywords: *"a phone under 200k for content"*.
+- Quotes prices in naira (how Nigerian buyers think) with the USD amount PayPal will charge.
 - Shows product cards, compares options side by side, and is honest when something is out of stock (and offers the closest alternative).
 - Builds the cart from conversation: *"add the cheaper one and a power bank"*.
 - **Pays inside the chat**: the checkout appears as a receipt with PayPal buttons. Payment is captured and verified on the server, then the receipt is stamped *PAID*.
@@ -69,14 +70,25 @@ The bottom of the chat shows which AI and PayPal mode is active.
 
 ## Try this conversation
 
-1. *I need a phone under $250 with a good camera for content*
+1. *I need a phone under 200k for content*
 2. *compare them*
 3. *add the cheaper one and a power bank*
 4. *checkout* → tap the PayPal button
 5. *has my payment gone through?*
 6. *I want a ring light* → *yes* → *send me an invoice* → enter an email
-7. *do you have iphone 13?* (out of stock → alternative)
+7. *do you have iphone 15 pro max?* (out of stock → closest alternative)
 8. Open `/seller` and press **Refresh** under *What Oja noticed*.
+
+## Catalog and prices
+
+The demo catalog is 21 real products sold in Nigeria, priced in naira from Nigerian retailers:
+
+- Phones: Slot, Jumia and Konga prices compiled by [TechCabal (May 2026)](https://techcabal.com/2026/05/28/cheapest-phones-in-nigeria-and-their-prices/)
+- Laptops: [NaijaTechGuide price ranges (Jan 2026)](https://www.naijatechguide.com/laptop-prices-in-nigeria-hp-dell-acer.html)
+- Earbuds: [NigerianQueries price list](https://nigerianqueries.com/cheapest-quality-earbuds-in-nigeria/)
+- A few accessories use typical Lagos market prices (marked `estimatedPrice` in `src/catalog.js`).
+
+PayPal sandbox checks out in USD, so prices convert at the official NFEM rate (₦1,333.54 per $1, 19 Oct 2026). Change `NGN_PER_USD` in `.env` to update it.
 
 ## Project structure
 

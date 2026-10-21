@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { categories, getProduct, publicProduct, resolveProduct, searchProducts } from '../catalog.js';
+import { categories, getProduct, publicProduct, resolveProduct, searchProducts, toUsd } from '../catalog.js';
 import {
   cartAdd, cartRemove, cartTotals, createOrderRecord, getOrder, listOrders, logEvent, updateOrder,
 } from '../store.js';
@@ -16,7 +16,7 @@ import QRCode from 'qrcode';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const lite = (p) => ({
-  id: p.id, name: p.name, price: p.price, inStock: p.stock > 0, stockLeft: p.stock, rating: p.rating, summary: p.summary,
+  id: p.id, name: p.name, price_usd: p.price, price_ngn: p.priceNgn, inStock: p.stock > 0, stockLeft: p.stock, rating: p.rating, summary: p.summary,
 });
 
 function resolveOrFail(ref) {
@@ -26,6 +26,12 @@ function resolveOrFail(ref) {
 }
 
 export class ToolError extends Error {}
+
+/** Budget in USD, from either a USD or a naira limit (whichever is tighter). */
+function maxUsd(args) {
+  const limits = [args.max_price, args.max_price_ngn != null ? args.max_price_ngn / config.store.ngnPerUsd : null].filter((v) => v != null && !Number.isNaN(Number(v)));
+  return limits.length ? Math.min(...limits.map(Number)) : undefined;
+}
 
 export const tools = [
   {
@@ -38,16 +44,17 @@ export const tools = [
         query: { type: 'string', description: 'What the buyer is looking for, in plain words.' },
         category: { type: 'string', enum: categories, description: 'Optional category filter.' },
         max_price: { type: 'number', description: 'Optional maximum price in USD.' },
+        max_price_ngn: { type: 'number', description: 'Optional maximum price in naira (use when the buyer gives a naira budget, e.g. 200k = 200000).' },
         min_price: { type: 'number', description: 'Optional minimum price in USD.' },
       },
       required: ['query'],
     },
     async run(session, args) {
       const found = searchProducts({
-        query: args.query, category: args.category, maxPrice: args.max_price, minPrice: args.min_price, limit: 4,
+        query: args.query, category: args.category, maxPrice: maxUsd(args), minPrice: args.min_price, limit: 4,
       });
       logEvent('search', {
-        sessionId: session.id, query: args.query, category: args.category || null, maxPrice: args.max_price ?? null,
+        sessionId: session.id, query: args.query, category: args.category || null, maxPrice: maxUsd(args) ?? null,
         results: found.length, inStock: found.filter((p) => p.stock > 0).length,
         // The best match being out of stock is a lost sale the seller should know about.
         topOutOfStock: found[0] && found[0].stock <= 0 ? found[0].name : null,

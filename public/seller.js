@@ -43,6 +43,7 @@ async function load() {
   $('#store-line').textContent = `${config.store.name}: your AI salesperson's results`;
 
   $('#revenue').textContent = usd(stats.revenue);
+  $('#revenue-ngn').textContent = `About ₦${Math.round(stats.revenueNgn || 0).toLocaleString('en-US')}`;
   $('#k-orders').textContent = stats.paidOrders;
   $('#k-conv').textContent = `${stats.conversionRate}%`;
   $('#k-aov').textContent = usd(stats.averageOrder);

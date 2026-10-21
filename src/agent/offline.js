@@ -1,4 +1,5 @@
 import { products, getProduct, searchProducts, publicProduct } from '../catalog.js';
+import { config } from '../config.js';
 import { cartTotals } from '../store.js';
 import { runTool } from './tools.js';
 
@@ -12,6 +13,25 @@ const ORDINALS = { first: 0, '1st': 0, second: 1, '2nd': 1, third: 2, '3rd': 2, 
 const GENERIC = new Set(['phone', 'laptop', 'power', 'bank', 'speaker', 'used', 'uk', 'grade', 'with', 'the', 'and', 'refurbished', 'pro', 'mah', 'light', 'air', 'note', 'active', 'watch', 'mic', 'station']);
 const EMAIL_RE = /[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}/i;
 const usd = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
+const ngn = (n) => `₦${Math.round(n).toLocaleString('en-US')}`;
+/** "₦146,600 ($110)" — naira first, because that's how buyers think. */
+const both = (p) => `${ngn(p.priceNgn)} (${usd(p.price)})`;
+const bothTotal = (t) => `${ngn(t.totalNgn)} (${usd(t.total)})`;
+
+/** Parse a budget like "under 150k", "below ₦200,000", "under $120". Returns { usd, label } or null. */
+function parseBudget(msg) {
+  const m = msg.match(/(?:under|below|less than|max(?:imum)?|budget(?: of| is)?|up to|not more than|within)\s*(₦|n|\$|usd)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|m|naira|ngn|dollars?|usd)?\b/i);
+  if (!m) return null;
+  let n = Number(m[2].replace(/,/g, ''));
+  const unit = (m[3] || '').toLowerCase();
+  const cur = (m[1] || '').toLowerCase();
+  if (unit === 'k') n *= 1000;
+  if (unit === 'm') n *= 1_000_000;
+  const isUsd = cur === '$' || cur === 'usd' || /^(dollars?|usd)$/.test(unit);
+  const isNgn = cur === '₦' || cur === 'n' || /^(naira|ngn|k|m)$/.test(unit) || (!isUsd && n >= 5000);
+  if (isNgn) return { usd: n / config.store.ngnPerUsd, label: ngn(n) };
+  return { usd: n, label: usd(n) };
+}
 
 export async function runOffline(session, text) {
   const ui = [];
@@ -26,7 +46,7 @@ export async function runOffline(session, text) {
     session.pendingInvoice = false;
     const r = await call('send_invoice', { email });
     if (r.error) return done(r.error);
-    return done(`Done! I've emailed a PayPal invoice for ${usd(r.total)} to ${r.emailed_to}. You can also scan the QR code or tap the pay link below — it's valid for 3 days.`);
+    return done(`Done! I've emailed a PayPal invoice for ${bothTotal(cartTotals(session.cart))} to ${r.emailed_to}. You can also scan the QR code or tap the pay link below — it's valid for 3 days.`);
   }
   if (wantsInvoice) {
     if (!cartTotals(session.cart).items.length) return done('Sure — first tell me what you\'d like to buy, then I\'ll send you a PayPal invoice for it.');
@@ -45,7 +65,7 @@ export async function runOffline(session, text) {
     session.pendingInvoice = false;
     const r = await call('send_invoice', { email: session.buyerEmail });
     if (r.error) return done(r.error);
-    return done(`Sent! A PayPal invoice for ${usd(r.total)} is on its way to ${r.emailed_to}. You can also pay with the QR code below.`);
+    return done(`Sent! A PayPal invoice for ${bothTotal(cartTotals(session.cart))} is on its way to ${r.emailed_to}. You can also pay with the QR code below.`);
   }
 
   // "yes" to a single suggested product (an add-on or an alternative) adds it.
@@ -54,7 +74,7 @@ export async function runOffline(session, text) {
     const r = await call('add_to_cart', { product_id: p.id });
     if (r.error) return done(r.error);
     session.lastShown = [];
-    return done(`Added ${p.name}. Your total is ${usd(r.cart.total)}. Say "checkout" when you're ready to pay.`);
+    return done(`Added ${p.name}. Your total is ${bothTotal(r.cart)}. Say "checkout" when you're ready to pay.`);
   }
 
   // 2. Order status
@@ -72,13 +92,13 @@ export async function runOffline(session, text) {
     if (!p) return done('Which item should I remove from your cart?');
     const r = await call('remove_from_cart', { product_id: p.id });
     if (r.error) return done(r.error);
-    return done(r.cart.items.length ? `Removed ${p.name}. Your total is now ${usd(r.cart.total)}.` : `Removed ${p.name}. Your cart is now empty.`);
+    return done(r.cart.items.length ? `Removed ${p.name}. Your total is now ${bothTotal(r.cart)}.` : `Removed ${p.name}. Your cart is now empty.`);
   }
 
   // 4. Compare
   if (/\b(compare|comparison|vs\.?|versus|difference|which (one )?is better)\b/.test(msg)) {
     let ids = products.filter((p) => mentions(msg, p)).map((p) => p.id);
-    if (ids.length < 2) ids = session.lastShown.slice(0, 3);
+    if (ids.length < 2) ids = session.lastShown.filter((id) => getProduct(id)?.stock > 0).slice(0, 3);
     const r = await call('compare_products', { product_ids: ids });
     if (r.error) return done('Show me a few options first, then I can compare them for you.');
     const inStock = r.products.filter((p) => p.inStock);
@@ -86,7 +106,7 @@ export async function runOffline(session, text) {
     const best = [...inStock].sort((a, b) => b.rating - a.rating)[0];
     return done(
       best && cheapest && best.id !== cheapest.id
-        ? `Here's the side-by-side. Best overall: ${best.name} (${best.rating}★). Best value: ${cheapest.name} at ${usd(cheapest.price)}. Want me to add one?`
+        ? `Here's the side-by-side. Best overall: ${best.name} (${best.rating}★). Best value: ${cheapest.name} at ${both(getProduct(cheapest.id))}. Want me to add one?`
         : `Here's the side-by-side comparison. Want me to add one to your cart?`,
     );
   }
@@ -130,9 +150,9 @@ export async function runOffline(session, text) {
       if (failed.length) say.push(failed.join(' '));
       if (!wantsCheckout) {
         const t = cartTotals(session.cart);
-        say.push(`Total: ${usd(t.total)}${t.shipping ? ` (incl. ${usd(t.shipping)} shipping — free from ${usd(t.freeShippingFrom)})` : ' with free shipping'}.`);
+        say.push(`Total: ${bothTotal(t)}${t.shipping ? `, incl. ${usd(t.shipping)} delivery (free from ${usd(t.freeShippingFrom)})` : ' with free delivery'}.`);
         const addon = suggestAddon(session);
-        say.push(addon ? `Want ${/^[aeiou]/i.test(addon.name) ? 'an' : 'a'} ${addon.name} (${usd(addon.price)}) to go with it, or shall we check out?` : 'Ready to check out?');
+        say.push(addon ? `Want ${/^[aeiou]/i.test(addon.name) ? 'an' : 'a'} ${addon.name} for ${both(addon)} to go with it, or shall we check out?` : 'Ready to check out?');
         return done(say.join(' '));
       }
     }
@@ -146,7 +166,8 @@ export async function runOffline(session, text) {
     }
     const r = await call('create_checkout');
     if (r.error) return done(r.error.includes('empty') ? "Your cart is empty — tell me what you're looking for and I'll find it." : r.error);
-    say.push(`Your order comes to ${usd(r.total)}. Tap the PayPal button below to pay securely — I'll confirm as soon as it goes through.`);
+    say.push(`Your order comes to ${ngn(cartTotals(session.cart).totalNgn)} — charged as ${usd(r.total)} through PayPal.`);
+    say.push(`Tap the PayPal button below to pay securely — I'll confirm as soon as it goes through.`);
     return done(say.join(' '));
   }
 
@@ -154,7 +175,7 @@ export async function runOffline(session, text) {
   if (/\b(cart|basket|total|how much)\b/.test(msg)) {
     const r = await call('view_cart');
     if (!r.items.length) return done("Your cart is empty. What are you shopping for today?");
-    return done(`You have ${r.itemCount} item${r.itemCount > 1 ? 's' : ''} — total ${usd(r.total)}. Say "checkout" when you're ready.`);
+    return done(`You have ${r.itemCount} item${r.itemCount > 1 ? 's' : ''} — total ${bothTotal(r)}. Say "checkout" when you're ready.`);
   }
 
   // 8. Small talk
@@ -166,10 +187,11 @@ export async function runOffline(session, text) {
   }
 
   // 9. Default: product search
-  const maxPrice = Number(msg.match(/(?:under|below|less than|max|budget(?: of| is)?|up to)\s*\$?\s*(\d{2,5})/)?.[1]) || undefined;
-  const r = await call('search_products', { query: text, ...(maxPrice ? { max_price: maxPrice } : {}) });
+  const budget = parseBudget(msg);
+  const query = budget ? text.replace(/(under|below|less than|max(imum)?|budget( of| is)?|up to|not more than|within)\s*(₦|n|\$|usd)?\s*\d[\d,]*(\.\d+)?\s*(k|m|naira|ngn|dollars?|usd)?/i, ' ') : text;
+  const r = await call('search_products', { query, ...(budget ? { max_price: budget.usd } : {}) });
   if (!r.count) {
-    return done(`I couldn't find that in stock${maxPrice ? ` under ${usd(maxPrice)}` : ''}. We carry phones, laptops, audio, power banks and solar, wearables and creator gear — what should I look for?`);
+    return done(`I couldn't find that in stock${budget ? ` under ${budget.label}` : ''}. We carry phones, laptops, audio, power banks and solar, wearables and creator gear — what should I look for?`);
   }
   const inStock = r.products.filter((p) => p.inStock);
   const out = r.products.filter((p) => !p.inStock);
@@ -177,17 +199,20 @@ export async function runOffline(session, text) {
   // Best match is out of stock: be honest and offer the closest in-stock alternative.
   if (!r.products[0].inStock) {
     const wanted = getProduct(r.products[0].id);
-    const alt = searchProducts({ query: wanted.tags.join(' '), category: wanted.category, inStockOnly: true, limit: 8 })
-      .sort((a, b) => Math.abs(a.price - wanted.price) - Math.abs(b.price - wanted.price))[0];
+    // Closest alternative: most shared features first, then nearest price.
+    const overlap = (p) => p.tags.filter((t) => wanted.tags.includes(t)).length;
+    const alt = products
+      .filter((p) => p.category === wanted.category && p.stock > 0 && p.id !== wanted.id)
+      .sort((a, b) => overlap(b) - overlap(a) || Math.abs(a.price - wanted.price) - Math.abs(b.price - wanted.price))[0];
     if (!alt) return done(`${wanted.name} is out of stock right now, sorry. I'll let the team know you asked.`);
     ui.length = 0;
     ui.push({ type: 'products', products: [wanted, alt].map(publicProduct) });
     session.lastShown = [alt.id];
-    return done(`${wanted.name} is out of stock right now, sorry. The closest alternative is ${alt.name} at ${usd(alt.price)} — ${lower(alt.summary)} Want me to add it?`);
+    return done(`${wanted.name} is out of stock right now, sorry. The closest alternative is ${alt.name} at ${both(alt)} — ${lower(alt.summary)} Want me to add it?`);
   }
 
-  const top = inStock[0];
-  say.push(`Here ${inStock.length > 1 ? `are my top ${inStock.length} picks` : 'is my pick'}${maxPrice ? ` under ${usd(maxPrice)}` : ''}. ${top.name} (${usd(top.price)}) stands out — ${lower(top.summary)}`);
+  const top = getProduct(inStock[0].id);
+  say.push(`Here ${inStock.length > 1 ? `are my top ${inStock.length} picks` : 'is my pick'}${budget ? ` under ${budget.label}` : ''}. ${top.name} at ${both(top)} stands out — ${lower(top.summary)}`);
   if (out.length) say.push(`(${out[0].name} is out of stock.)`);
   say.push(inStock.length > 1 ? 'Want me to compare them, or add one to your cart?' : 'Shall I add it to your cart?');
   return done(say.join(' '));

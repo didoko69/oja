@@ -9,9 +9,11 @@ export const config = {
     name: env('STORE_NAME', 'Danzora'),
     tagline: env('STORE_TAGLINE', 'Gadgets that work as hard as you do'),
     currency: 'USD',
+    // Official NFEM rate, 19 Oct 2026. Update before the demo.
+    ngnPerUsd: Number(env('NGN_PER_USD', '1333.54')),
     // Free shipping at or above this subtotal; flat fee below it.
     freeShippingFrom: Number(env('FREE_SHIPPING_FROM', '150')),
-    flatShipping: Number(env('FLAT_SHIPPING', '8')),
+    flatShipping: Number(env('FLAT_SHIPPING', '5')),
   },
 
   ai: {

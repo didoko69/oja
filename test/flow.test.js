@@ -39,11 +39,25 @@ try {
   const chat = async (message) => { await sleep(750); return (await call('POST', '/api/chat', { sessionId, message })).data; };
   let out;
 
-  await test('search respects budget and category', async () => {
-    out = await chat('I need a phone under $250 with a good camera for content');
+  await test('search respects a naira budget and category', async () => {
+    out = await chat('I need a phone under 150k with a good camera');
     const cards = out.ui.find((u) => u.type === 'products').products;
     assert.ok(cards.length >= 2);
-    assert.ok(cards.every((p) => p.category === 'phones' && p.price <= 250));
+    assert.ok(cards.every((p) => p.category === 'phones' && p.priceNgn <= 150000));
+    assert.match(out.reply, /₦\d/);
+  });
+
+  await test('search respects a dollar budget', async () => {
+    out = await chat('phone under $105');
+    const cards = out.ui.find((u) => u.type === 'products').products;
+    assert.ok(cards.every((p) => p.price <= 105));
+  });
+
+  let shown;
+  await test('use-case search', async () => {
+    out = await chat('I need a phone for content creation');
+    shown = out.ui.find((u) => u.type === 'products').products;
+    assert.equal(shown[0].id, 'ph-spark40');
   });
 
   await test('comparison card', async () => {
@@ -54,7 +68,9 @@ try {
   await test('"the cheaper one and a power bank" fills the cart', async () => {
     out = await chat('add the cheaper one and a power bank');
     assert.equal(out.cart.items.length, 2);
-    assert.ok(out.cart.items.some((i) => i.productId === 'ph-a15'), 'cheapest phone added');
+    const cheapest = shown.filter((p) => p.inStock).slice(0, 3).sort((a, b) => a.price - b.price)[0];
+    assert.ok(out.cart.items.some((i) => i.productId === cheapest.id), 'cheapest phone added');
+    assert.ok(out.cart.totalNgn > 0, 'naira total present');
     assert.ok(out.cart.items.some((i) => i.productId.startsWith('pw-')), 'power bank added');
   });
 
@@ -102,7 +118,7 @@ try {
   });
 
   await test('out of stock item offers an alternative', async () => {
-    out = await chat('do you have iphone 13?');
+    out = await chat('do you have iphone 15 pro max?');
     assert.match(out.reply, /out of stock/i);
     assert.equal(out.ui[0].products.length, 2);
   });

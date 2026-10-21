@@ -9,6 +9,7 @@ const sendBtn = $('.send');
 const state = { sessionId: null, config: null, busy: false, paypalReady: null, polling: new Set() };
 
 const usd = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
+const ngn = (n) => `₦${Math.round(n).toLocaleString('en-US')}`;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const store = {
@@ -140,7 +141,7 @@ function renderProducts({ products }) {
         <p class="sum">${esc(p.summary)}</p>
         <div class="meta">★ ${p.rating} · ${p.inStock ? (p.stockLeft <= 5 ? `Only ${p.stockLeft} left` : 'In stock') : 'Out of stock'}</div>
         <div class="row">
-          <span class="price">${usd(p.price)}</span>
+          <span class="price">${ngn(p.priceNgn)}<small class="usd">${usd(p.price)}</small></span>
           ${p.inStock ? `<button class="btn add" type="button">Add to cart</button>` : ''}
         </div>
       </div>`;
@@ -156,7 +157,7 @@ async function addFromCard(p, btn) {
     const { cart } = await api('POST', '/api/cart/add', { sessionId: state.sessionId, productId: p.id });
     btn.textContent = 'Added';
     updateCart(cart);
-    addMsg('bot', `${p.name} is in your cart. Total ${usd(cart.total)}. Say "checkout" when you're ready.`);
+    addMsg('bot', `${p.name} is in your cart. Total ${ngn(cart.totalNgn)} (${usd(cart.total)}). Say "checkout" when you're ready.`);
   } catch (err) {
     btn.disabled = false;
     addMsg('error', err.message);
@@ -171,7 +172,7 @@ function renderComparison({ products, rows }) {
   wrap.innerHTML = `<table>
     <thead><tr><th></th>${head}</tr></thead>
     <tbody>
-      ${line('Price', (p) => `<span class="price">${usd(p.price)}</span>`)}
+      ${line('Price', (p) => `<span class="price">${ngn(p.priceNgn)}</span> <small class="usd">${usd(p.price)}</small>`)}
       ${line('Rating', (p) => `★ ${p.rating}`)}
       ${rows.map((r) => line(r, (p) => esc(p.specs[r] ?? '—'))).join('')}
       ${line('Stock', (p) => (p.inStock ? 'In stock' : 'Out of stock'))}
@@ -183,10 +184,11 @@ function receiptHtml(totals, title, ref) {
   return `
     <header><strong>${esc(title)}</strong><span>${esc(ref)}</span></header>
     <ul>
-      ${totals.items.map((i) => `<li><span class="name">${i.qty > 1 ? `${i.qty} × ` : ''}${esc(i.name)}</span><span class="dots"></span><span class="amt">${usd(i.lineTotal)}</span></li>`).join('')}
-      <li class="sub"><span class="name">Shipping</span><span class="dots"></span><span class="amt">${totals.shipping ? usd(totals.shipping) : 'Free'}</span></li>
+      ${totals.items.map((i) => `<li><span class="name">${i.qty > 1 ? `${i.qty} × ` : ''}${esc(i.name)}</span><span class="dots"></span><span class="amt">${usd(i.lineTotal)}<small class="ngn">${ngn(i.lineTotalNgn)}</small></span></li>`).join('')}
+      <li class="sub"><span class="name">Shipping</span><span class="dots"></span><span class="amt">${totals.shipping ? `${usd(totals.shipping)}<small class="ngn">${ngn(totals.shippingNgn)}</small>` : 'Free'}</span></li>
     </ul>
-    <div class="grand"><span>Total</span><span class="price">${usd(totals.total)} <small>${esc(totals.currency)}</small></span></div>`;
+    <div class="grand"><span>Total</span><span class="price">${usd(totals.total)} <small>${esc(totals.currency)}</small></span></div>
+    <p class="fx">About ${ngn(totals.totalNgn)}. PayPal charges in US dollars.</p>`;
 }
 
 function renderCheckout({ orderId, paypalOrderId, totals }) {
@@ -300,8 +302,8 @@ function renderStatus({ order }) {
 function updateCart(cart, bump = true) {
   if (!cart) return;
   $('#cart-count').textContent = cart.itemCount;
-  $('#cart-total').textContent = usd(cart.total);
-  $('#cart-chip').setAttribute('aria-label', `Cart: ${cart.itemCount} items, ${usd(cart.total)}`);
+  $('#cart-total').textContent = ngn(cart.totalNgn || 0);
+  $('#cart-chip').setAttribute('aria-label', `Cart: ${cart.itemCount} items, ${ngn(cart.totalNgn || 0)}`);
   if (bump) {
     const chip = $('#cart-chip');
     chip.classList.remove('bump');

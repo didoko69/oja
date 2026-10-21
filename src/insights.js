@@ -11,6 +11,7 @@ export function sellerStats() {
 
   const paid = orders.filter((o) => PAID.has(o.status));
   const revenue = round(paid.reduce((s, o) => s + o.total, 0));
+  const revenueNgn = paid.reduce((s, o) => s + (o.totalNgn || 0), 0);
   const paidSessions = new Set(paid.map((o) => o.sessionId));
 
   const searches = events.filter((e) => e.type === 'search');
@@ -23,6 +24,7 @@ export function sellerStats() {
 
   return {
     revenue,
+    revenueNgn,
     currency: 'USD',
     paidOrders: paid.length,
     averageOrder: paid.length ? round(revenue / paid.length) : 0,
@@ -55,7 +57,7 @@ export async function sellerInsight() {
 
 function ruleInsights(s) {
   const out = [];
-  if (s.unmetDemand.length) out.push(`Restock or source "${s.unmetDemand[0].term}" — buyers asked for it ${s.unmetDemand[0].count}× and nothing in stock matched.`);
+  if (s.unmetDemand.length) out.push(`Restock or source "${s.unmetDemand[0].term}" — buyers asked for it ${s.unmetDemand[0].count}× while it was out of stock.`);
   if (s.abandonedCheckouts) out.push(`Follow up on ${s.abandonedCheckouts} unpaid checkout${s.abandonedCheckouts > 1 ? 's' : ''} — offer a PayPal invoice so they can pay later.`);
   if (s.topProducts[0]) out.push(`Feature ${s.topProducts[0].name} on your homepage — it's your best seller (${s.topProducts[0].qty} sold).`);
   const topAsk = s.topSearches.find((t) => !s.unmetDemand.some((u) => u.term.toLowerCase().includes(t.term) || t.term.includes(u.term.toLowerCase().split(' (')[0])));

@@ -112,7 +112,8 @@ app.post('/api/paypal/capture', wrap(async (req, res) => {
   addNote(s, `PayPal payment CONFIRMED for order ${order.id}: $${order.total.toFixed(2)}, capture ${cap.captureId}. The cart has been emptied.`);
 
   const first = cap.payer?.name?.split(' ')[0];
-  const reply = `Payment received${first ? `, ${first}` : ''}! 🎉 Order ${order.id} is confirmed — $${order.total.toFixed(2)} paid with PayPal. ${config.store.name} will contact you about delivery. Anything else?`;
+  const naira = order.totalNgn ? ` (about ₦${Math.round(order.totalNgn).toLocaleString('en-US')})` : '';
+  const reply = `Payment received${first ? `, ${first}` : ''}! 🎉 Order ${order.id} is confirmed — $${order.total.toFixed(2)}${naira} paid with PayPal. ${config.store.name} will contact you about delivery. Anything else?`;
   res.json({ status: 'PAID', order: paid, reply, cart: cartTotals(s.cart) });
 }));
 

@@ -54,11 +54,11 @@
 .card .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .card h3 { margin: 0; font-size: 15px; line-height: 1.3; }
 .card .sum { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.35; flex: 1; }
-.card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.card .row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 6px; }
 .card .price { font-size: 20px; color: var(--ink); }
 .card .meta { font-size: 13px; color: var(--ink-2); }
 .card.out { opacity: 0.72; }
-.card .add { padding: 7px 12px; font-size: 14px; }
+.card .add { padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 
 /* Comparison */
 .compare { background: var(--paper); border-radius: var(--r-md); box-shadow: var(--shadow); overflow-x: auto; }
@@ -95,12 +95,12 @@
 .receipt .note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
 .receipt.paid .pay { display: none; }
 .stamp {
-  position: absolute; right: 14px; top: 12px; transform: rotate(-9deg);
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%) rotate(-9deg);
   border: 3px solid var(--leaf); color: var(--leaf); border-radius: 8px; padding: 3px 10px;
-  font: 800 22px/1 var(--display); letter-spacing: 0.02em; background: rgba(255, 255, 255, 0.85);
+  font: 800 30px/1 var(--display); letter-spacing: 0.04em; background: rgba(255, 255, 255, 0.55); pointer-events: none;
   animation: stamp 0.35s cubic-bezier(.2, 1.6, .5, 1) both;
 }
-@keyframes stamp { from { transform: rotate(-9deg) scale(1.8); opacity: 0; } }
+@keyframes stamp { from { transform: translate(-50%, -50%) rotate(-9deg) scale(1.8); opacity: 0; } }
 .mock-pay { width: 100%; padding: 12px; border-radius: 999px; border: 0; background: #ffc439; color: #111a3a; font-weight: 700; font-size: 16px; }
 .mock-pay:hover { filter: brightness(0.96); }
 .mock-pay small { display: block; font-weight: 400; font-size: 12px; }
@@ -129,3 +129,11 @@
 .send { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--indigo); color: #fff; display: grid; place-items: center; }
 .send[disabled] { opacity: 0.5; }
 .fineprint { margin: 8px 4px 0; font-size: 12px; color: var(--ink-2); text-align: center; }
+
+/* Dual currency: naira is what buyers think in; USD is what PayPal charges. */
+.card .price { display: flex; flex-direction: column; line-height: 1.1; }
+.card .price .usd { font: 400 12.5px/1.3 var(--body); color: var(--ink-2); }
+.compare .usd { color: var(--ink-2); }
+.receipt .amt { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.receipt .amt .ngn { font-size: 12px; color: var(--ink-2); }
+.receipt .fx { margin: 4px 0 0; text-align: right; font-size: 13px; color: var(--ink-2); }
