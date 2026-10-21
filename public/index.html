@@ -24,23 +24,35 @@
           <p class="store" id="store-line">Shopping assistant for Danzora</p>
         </div>
       </div>
+      <div class="top-actions">
+      <label class="currency">
+        <span class="sr-only">Pay in</span>
+        <select id="currency" aria-label="Currency PayPal charges in">
+          <option value="USD">$ USD</option>
+          <option value="GBP">£ GBP</option>
+          <option value="EUR">€ EUR</option>
+          <option value="CAD">CA$ CAD</option>
+        </select>
+      </label>
       <button class="cart-chip" id="cart-chip" type="button" aria-live="polite" aria-label="Cart">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.5" fill="currentColor"/><circle cx="17" cy="20" r="1.5" fill="currentColor"/></svg>
         <span id="cart-count">0</span>
         <span class="price" id="cart-total">₦0</span>
       </button>
+      </div>
     </header>
     <div class="adire" aria-hidden="true"></div>
 
     <main class="thread" id="thread" aria-live="polite" aria-label="Conversation">
       <section class="intro" id="intro">
-        <h2>What are you shopping for today?</h2>
-        <p>Describe what you need in your own words. Oja finds it, compares options, and lets you pay with PayPal without leaving this chat.</p>
+        <h2>Shop Danzora by chat — for yourself, or for family back home.</h2>
+        <p>Tell Oja what you need in your own words. Living abroad? Pay with PayPal in pounds, dollars or euros, and we deliver to your family anywhere in Nigeria.</p>
       </section>
     </main>
 
     <footer class="composer-wrap">
       <div class="chips" id="chips">
+        <button type="button" class="chip gift">I'm in London — a phone for my mum in Lokoja, about £120</button>
         <button type="button" class="chip">A phone under 200k for content</button>
         <button type="button" class="chip">Something for power cuts</button>
         <button type="button" class="chip">Laptop for coding</button>

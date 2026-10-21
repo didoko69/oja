@@ -1,0 +1,30 @@
+# Render Blueprint: one-click deploy of Oja (https://render.com/docs/blueprint-spec)
+services:
+  - type: web
+    name: oja
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Secrets: set these in the Render dashboard (sync: false keeps them out of git)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_MERCHANT_EMAIL
+        sync: false
+      - key: SELLER_KEY
+        sync: false
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: STORE_NAME
+        value: Danzora
+      - key: STORE_CITY
+        value: Lokoja

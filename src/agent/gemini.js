@@ -10,16 +10,18 @@ import { systemPrompt } from './prompt.js';
 const ENDPOINT = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
-const declarations = tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
+// Built on first use (tools.js imports modules that import this file).
+let declarations = null;
+const toolDeclarations = () => (declarations ??= tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })));
 
-async function callGemini(contents, { withTools = true, system = systemPrompt() } = {}) {
+async function callGemini(contents, { withTools = true, system = systemPrompt(), session = null } = {}) {
   const res = await fetch(ENDPOINT(config.ai.geminiModel), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.ai.geminiKey },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
+      systemInstruction: { parts: [{ text: session ? systemPrompt(session) : system }] },
       contents,
-      ...(withTools ? { tools: [{ functionDeclarations: declarations }], toolConfig: { functionCallingConfig: { mode: 'AUTO' } } } : {}),
+      ...(withTools ? { tools: [{ functionDeclarations: toolDeclarations() }], toolConfig: { functionCallingConfig: { mode: 'AUTO' } } } : {}),
       generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
     }),
   });
@@ -44,7 +46,7 @@ export async function runGemini(session, userText) {
 
   let reply = '';
   for (let step = 0; step < config.ai.maxToolSteps; step++) {
-    const content = await callGemini(trim(history));
+    const content = await callGemini(trim(history), { session });
     // Keep the model turn exactly as returned (it may carry thought signatures).
     history.push({ role: 'model', parts: content.parts });
 

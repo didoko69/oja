@@ -25,7 +25,7 @@
 /* Thread */
 .thread { flex: 1; padding: 20px 16px 8px; display: flex; flex-direction: column; gap: 12px; }
 .intro { padding: 28px 4px 8px; max-width: 34rem; }
-.intro h2 { margin: 0 0 8px; font: 800 clamp(30px, 7vw, 44px)/1.02 var(--display); letter-spacing: -0.035em; color: var(--indigo); }
+.intro h2 { margin: 0 0 10px; font: 800 clamp(28px, 6.4vw, 42px)/1.04 var(--display); letter-spacing: -0.035em; color: var(--indigo); }
 .intro p { margin: 0; color: var(--ink-2); }
 
 .msg { max-width: min(85%, 34rem); padding: 10px 14px; border-radius: var(--r-lg); white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -118,9 +118,9 @@
 
 /* Composer */
 .composer-wrap { position: sticky; bottom: 0; background: linear-gradient(to top, var(--wash) 75%, transparent); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
-.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 8px; }
 .chips::-webkit-scrollbar { display: none; }
-.chip { flex: none; border: 0; border-radius: 999px; padding: 7px 13px; background: var(--paper); color: var(--indigo); font-size: 14px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.chip { flex: 0 1 auto; text-align: left; border: 0; border-radius: 999px; padding: 7px 13px; background: var(--paper); color: var(--indigo); font-size: 14px; box-shadow: inset 0 0 0 1.5px var(--line); }
 .chip:hover { background: var(--wash-2); }
 .composer { display: flex; gap: 8px; background: var(--paper); border-radius: 999px; padding: 6px; box-shadow: var(--shadow); }
 .composer input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 8px 12px; font-size: 16px; }
@@ -146,3 +146,46 @@
   background: rgba(255, 255, 255, 0.85); padding: 1px 5px; border-radius: 4px; text-decoration: none; max-width: calc(100% - 12px);
 }
 .card .thumb .credit:hover { text-decoration: underline; }
+
+/* Header: currency picker next to the cart */
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.currency select {
+  appearance: none; border: 0; border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: 14px;
+  background: rgba(255, 255, 255, 0.12); color: #fff; cursor: pointer;
+}
+.currency select:hover { background: rgba(255, 255, 255, 0.2); }
+.currency select option { color: var(--ink); }
+@media (max-width: 420px) { .store { display: none; } .cart-chip { padding: 7px 11px; } }
+
+.chip.gift { background: var(--ochre-soft); box-shadow: inset 0 0 0 1.5px #ecd08f; color: #5d4100; }
+.chip.gift:hover { background: #f8e5b8; }
+
+/* Delivery card: a shipping label, with the address the courier will use. */
+.parcel {
+  align-self: flex-start; width: min(100%, 320px); background: var(--paper); border-radius: var(--r-md);
+  padding: 14px 16px 14px 20px; display: grid; gap: 2px; font-size: 14.5px; box-shadow: var(--shadow); position: relative;
+  border-left: 6px solid var(--ochre);
+}
+.parcel .tag { font-size: 12.5px; font-weight: 700; color: #7a5300; margin-bottom: 4px; }
+.parcel strong { font: 700 17px/1.25 var(--display); color: var(--indigo); }
+.parcel .from { margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+
+.receipt .ship-to { margin: 10px 0 0; padding: 10px 0 0; border-top: 1.5px dashed var(--line); font-size: 13.5px; color: var(--ink-2); display: grid; gap: 1px; }
+.receipt .ship-to span { font-size: 12px; }
+.receipt .ship-to strong { color: var(--ink); font-size: 14.5px; }
+.receipt .ship-to em { font-style: normal; justify-self: start; margin-top: 4px; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--ochre-soft); color: #7a5300; }
+
+/* WhatsApp message for the family */
+.family { align-self: flex-start; width: min(100%, 360px); background: #e7f6ea; border-radius: var(--r-lg); padding: 12px 14px 14px; display: grid; gap: 10px; }
+.family .wa-head { display: flex; align-items: center; gap: 8px; color: #0f6b3a; font-weight: 700; font-size: 14px; }
+.family .bubble-wa { margin: 0; background: #fff; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; font-size: 14.5px; line-height: 1.45; box-shadow: 0 1px 0 rgba(15, 107, 58, 0.15); }
+.family .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.wa { background: #1e8e4e; }
+.btn.wa:hover { background: #18773f; }
+
+/* Delivery progress in order status */
+.status .to { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-2); }
+.track { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 12px; line-height: 1.25; color: var(--ink-2); }
+.track li { padding-top: 8px; border-top: 4px solid var(--wash-2); }
+.track li.done { border-top-color: var(--leaf); color: var(--ink); }
+.track li.now { font-weight: 700; color: var(--leaf); }

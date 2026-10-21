@@ -3,9 +3,11 @@ import path from 'node:path';
 import { config, modes } from './src/config.js';
 import { products, publicProduct, getProduct } from './src/catalog.js';
 import {
-  createSession, getSession, cartAdd, cartTotals, cartClear, getOrder, findOrderByPaypalId, updateOrder,
-  commitStock, logEvent, listOrders, listSessions, resetAll,
+  createSession, getSession, cartAdd, sessionTotals, cartClear, getOrder, findOrderByPaypalId, updateOrder,
+  commitStock, logEvent, listOrders, listSessions, resetAll, touch,
 } from './src/store.js';
+import { CURRENCIES, currencyFromLocale, fmt, fmtNgn, isCurrency, normCurrency } from './src/money.js';
+import { familyMessage } from './src/family.js';
 import { runAgent, addNote } from './src/agent/index.js';
 import * as paypal from './src/paypal.js';
 import { sellerStats, sellerInsight } from './src/insights.js';
@@ -13,6 +15,11 @@ import { sellerStats, sellerInsight } from './src/insights.js';
 const app = express();
 app.use(express.json({ limit: '50kb' }));
 app.use(express.static(path.resolve('public'), { extensions: ['html'] }));
+// AG Grid (seller dashboard), served from our own server instead of a CDN.
+app.use('/vendor/ag-grid', express.static(path.resolve('node_modules/ag-grid-community/dist'), { maxAge: '7d' }));
+app.use('/vendor/ag-grid-styles', express.static(path.resolve('node_modules/ag-grid-community/styles'), { maxAge: '7d' }));
+
+app.get('/healthz', (req, res) => res.json({ ok: true, ai: modes.ai, paypal: modes.paypal }));
 
 /* ---------- helpers ---------- */
 
@@ -42,21 +49,35 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 
 app.get('/api/config', (req, res) => {
   res.json({
-    store: { name: config.store.name, tagline: config.store.tagline, currency: config.store.currency },
+    store: { name: config.store.name, tagline: config.store.tagline, city: config.store.city, deliveryDays: config.store.deliveryDays },
+    currencies: Object.entries(CURRENCIES).map(([code, c]) => ({ code, symbol: c.symbol, name: c.name, ngnPer: config.fx[code] })),
     modes,
     paypalClientId: modes.paypal === 'sandbox' ? config.paypal.clientId : null,
   });
 });
 
 app.post('/api/session', (req, res) => {
-  const s = createSession();
-  res.json({ sessionId: s.id });
+  // Overseas buyers see their own currency first (en-GB -> GBP); everyone else pays in USD.
+  const s = createSession({ currency: currencyFromLocale(req.body?.locale), source: req.body?.source });
+  logEvent('session', { sessionId: s.id, source: s.source, currency: s.currency });
+  res.json({ sessionId: s.id, currency: s.currency });
+});
+
+/** Currency picker in the chat header. */
+app.post('/api/currency', (req, res) => {
+  const s = requireSession(req, res);
+  if (!s) return;
+  if (!isCurrency(req.body.currency)) return res.status(400).json({ error: 'Unsupported currency' });
+  s.currency = normCurrency(req.body.currency);
+  touch();
+  addNote(s, `The buyer switched their checkout currency to ${s.currency}.`);
+  res.json({ currency: s.currency, cart: sessionTotals(s) });
 });
 
 app.get('/api/session/:sessionId', (req, res) => {
   const s = requireSession(req, res);
   if (!s) return;
-  res.json({ history: s.history.filter((h) => h.role !== 'note'), cart: cartTotals(s.cart) });
+  res.json({ history: s.history.filter((h) => h.role !== 'note'), cart: sessionTotals(s), currency: s.currency, delivery: s.delivery });
 });
 
 app.post('/api/chat', wrap(async (req, res) => {
@@ -83,7 +104,7 @@ app.post('/api/cart/add', (req, res) => {
   const r = cartAdd(s, p.id, 1);
   if (!r.ok) return res.status(400).json({ error: r.error });
   addNote(s, `The buyer tapped "Add to cart" on ${p.name} (${p.id}). It is now in the cart.`);
-  res.json({ cart: cartTotals(s.cart) });
+  res.json({ cart: sessionTotals(s) });
 });
 
 /** Called by the PayPal button after the buyer approves. Server captures and verifies. */
@@ -109,12 +130,23 @@ app.post('/api/paypal/capture', wrap(async (req, res) => {
   commitStock(paid);
   cartClear(s);
   logEvent('paid', { sessionId: s.id, orderId: order.id, total: order.total });
-  addNote(s, `PayPal payment CONFIRMED for order ${order.id}: $${order.total.toFixed(2)}, capture ${cap.captureId}. The cart has been emptied.`);
+  addNote(s, `PayPal payment CONFIRMED for order ${order.id}: ${fmt(order.total, order.currency)}, capture ${cap.captureId}. The cart has been emptied.`);
+
+  // Buying for family back home: write the WhatsApp message the buyer forwards to them.
+  let family = null;
+  if (paid.delivery?.isGift) {
+    family = await familyMessage(paid);
+    if (family) updateOrder(order.id, { familyMessage: family.text });
+    s.delivery = null; // next gift starts fresh
+    touch();
+  }
 
   const first = cap.payer?.name?.split(' ')[0];
-  const naira = order.totalNgn ? ` (about ₦${Math.round(order.totalNgn).toLocaleString('en-US')})` : '';
-  const reply = `Payment received${first ? `, ${first}` : ''}! 🎉 Order ${order.id} is confirmed — $${order.total.toFixed(2)}${naira} paid with PayPal. ${config.store.name} will contact you about delivery. Anything else?`;
-  res.json({ status: 'PAID', order: paid, reply, cart: cartTotals(s.cart) });
+  const naira = order.totalNgn ? ` (about ${fmtNgn(order.totalNgn)})` : '';
+  const d = paid.delivery;
+  const where = d ? ` ${config.store.name} will deliver to ${d.recipientName} in ${d.city} within ${config.store.deliveryDays}.` : ` ${config.store.name} will contact you about delivery.`;
+  const reply = `Payment received${first ? `, ${first}` : ''}! 🎉 Order ${order.id} is confirmed — ${fmt(order.total, order.currency)}${naira} paid with PayPal.${where}${family ? ` Here's a message you can send ${d.recipientName.split(' ')[0]} on WhatsApp:` : ' Anything else?'}`;
+  res.json({ status: 'PAID', order: getOrder(order.id), reply, family, cart: sessionTotals(s) });
 }));
 
 /** Lets the chat poll an invoice so it can celebrate when the buyer pays from email/QR. */
@@ -160,6 +192,22 @@ app.get('/api/seller/conversations', sellerOnly, (req, res) => {
 });
 
 app.get('/api/seller/products', sellerOnly, (req, res) => res.json(products.map(publicProduct)));
+
+const DELIVERY_STEPS = ['NOT_STARTED', 'PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+
+/** Seller updates delivery progress from the dashboard grid; the buyer's chat is told. */
+app.post('/api/seller/orders/:orderId/delivery', sellerOnly, (req, res) => {
+  const order = getOrder(req.params.orderId);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  const status = String(req.body?.status || '');
+  if (!DELIVERY_STEPS.includes(status)) return res.status(400).json({ error: `Status must be one of ${DELIVERY_STEPS.join(', ')}` });
+  if (order.status !== 'PAID' && status !== 'NOT_STARTED') return res.status(409).json({ error: 'Only paid orders can be dispatched' });
+  const updated = updateOrder(order.id, { deliveryStatus: status, [`${status.toLowerCase()}At`]: Date.now() });
+  logEvent('delivery_update', { orderId: order.id, status });
+  const s = getSession(order.sessionId);
+  if (s) addNote(s, `Delivery update for order ${order.id}: ${status.replaceAll('_', ' ').toLowerCase()}.`);
+  res.json(updated);
+});
 
 app.post('/api/seller/reset', sellerOnly, (req, res) => {
   resetAll();

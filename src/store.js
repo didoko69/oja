@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { config } from './config.js';
-import { getProduct, toNgn } from './catalog.js';
+import { getProduct } from './catalog.js';
+import { deliveryFeeNgn, fromNgn, normCurrency } from './money.js';
 
 // Simple in-memory store, snapshotted to disk so a restart doesn't wipe the demo.
 const DATA_DIR = path.resolve(process.env.OJA_DATA_DIR || 'data');
@@ -33,7 +34,7 @@ export const newId = (prefix) => `${prefix}_${crypto.randomBytes(6).toString('he
 
 /* ---------- sessions ---------- */
 
-export function createSession() {
+export function createSession({ currency, source } = {}) {
   const id = newId('s');
   state.sessions[id] = {
     id,
@@ -44,6 +45,9 @@ export function createSession() {
     lastShown: [], // product ids last shown to the buyer, for "the first one", "the cheaper one"
     buyerEmail: null,
     orderIds: [],
+    currency: normCurrency(currency),
+    source: source ? String(source).slice(0, 40) : 'direct', // where the buyer came from (?src=whatsapp)
+    delivery: null, // { recipientName, recipientPhone, address, city, state, isGift, relationship, senderName, giftNote, language }
   };
   save();
   return state.sessions[id];
@@ -94,31 +98,40 @@ export function cartClear(session) {
   save();
 }
 
-/** Prices and totals ALWAYS come from the catalog here — never from the AI. */
-export function cartTotals(cart) {
+/**
+ * Prices and totals ALWAYS come from the catalog here — never from the AI.
+ * Prices are stored in naira and converted to the checkout currency (whole units per item).
+ */
+export function cartTotals(cart, currency = config.defaultCurrency) {
+  const cur = normCurrency(currency);
   const items = cart
     .map(({ productId, qty }) => {
       const p = getProduct(productId);
       if (!p) return null;
-      return { productId, name: p.name, unitPrice: p.price, unitPriceNgn: p.priceNgn, qty, lineTotal: round(p.price * qty), lineTotalNgn: p.priceNgn * qty };
+      const unit = fromNgn(p.priceNgn, cur);
+      return { productId, name: p.name, unitPrice: unit, unitPriceNgn: p.priceNgn, qty, lineTotal: round(unit * qty), lineTotalNgn: p.priceNgn * qty };
     })
     .filter(Boolean);
+  const subtotalNgn = items.reduce((s, i) => s + i.lineTotalNgn, 0);
+  const shippingNgn = deliveryFeeNgn(subtotalNgn);
   const subtotal = round(items.reduce((s, i) => s + i.lineTotal, 0));
-  const shipping = subtotal === 0 || subtotal >= config.store.freeShippingFrom ? 0 : config.store.flatShipping;
+  const shipping = shippingNgn ? fromNgn(shippingNgn, cur) : 0;
   return {
     items,
     itemCount: items.reduce((s, i) => s + i.qty, 0),
     subtotal,
     shipping,
     total: round(subtotal + shipping),
-    // Naira reference amounts (checkout itself is in USD).
-    subtotalNgn: items.reduce((s, i) => s + i.lineTotalNgn, 0),
-    shippingNgn: toNgn(shipping),
-    totalNgn: items.reduce((s, i) => s + i.lineTotalNgn, 0) + toNgn(shipping),
-    currency: config.store.currency,
-    freeShippingFrom: config.store.freeShippingFrom,
+    currency: cur,
+    subtotalNgn,
+    shippingNgn,
+    totalNgn: subtotalNgn + shippingNgn,
+    freeDeliveryFromNgn: config.store.freeDeliveryFromNgn,
   };
 }
+
+/** Totals for a session, in the buyer's chosen currency. */
+export const sessionTotals = (session) => cartTotals(session.cart, session.currency);
 
 const round = (n) => Math.round(n * 100) / 100;
 export const money = (n) => Number(n).toFixed(2);
@@ -143,6 +156,10 @@ export function createOrderRecord(session, totals, extra = {}) {
     invoiceUrl: null,
     payer: null,
     method: null,
+    delivery: session.delivery ? { ...session.delivery } : null,
+    deliveryStatus: 'NOT_STARTED', // NOT_STARTED -> PACKED -> OUT_FOR_DELIVERY -> DELIVERED
+    source: session.source,
+    familyMessage: null,
     ...extra,
   };
   session.orderIds.push(id);

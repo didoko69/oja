@@ -10,8 +10,11 @@ export function sellerStats() {
   const events = listEvents();
 
   const paid = orders.filter((o) => PAID.has(o.status));
-  const revenue = round(paid.reduce((s, o) => s + o.total, 0));
+  // Buyers pay in different currencies, so the headline is in naira; the breakdown keeps each currency.
   const revenueNgn = paid.reduce((s, o) => s + (o.totalNgn || 0), 0);
+  const byCurrency = {};
+  for (const o of paid) byCurrency[o.currency] = round((byCurrency[o.currency] || 0) + o.total);
+  const gifts = paid.filter((o) => o.delivery?.isGift);
   const paidSessions = new Set(paid.map((o) => o.sessionId));
 
   const searches = events.filter((e) => e.type === 'search');
@@ -23,11 +26,15 @@ export function sellerStats() {
   const abandoned = orders.filter((o) => o.status === 'AWAITING_PAYMENT' && Date.now() - o.createdAt > 10 * 60_000);
 
   return {
-    revenue,
     revenueNgn,
-    currency: 'USD',
+    revenueByCurrency: byCurrency,
     paidOrders: paid.length,
-    averageOrder: paid.length ? round(revenue / paid.length) : 0,
+    averageOrderNgn: paid.length ? Math.round(revenueNgn / paid.length) : 0,
+    giftOrders: gifts.length,
+    giftRevenueNgn: gifts.reduce((s, o) => s + (o.totalNgn || 0), 0),
+    deliveriesPending: paid.filter((o) => o.deliveryStatus !== 'DELIVERED').length,
+    deliveryCities: topN(paid.filter((o) => o.delivery?.city).map((o) => o.delivery.city), 5),
+    sources: topN(sessions.map((s) => s.source || 'direct'), 6),
     conversations: sessions.length,
     conversionRate: sessions.length ? Math.round((paidSessions.size / sessions.length) * 100) : 0,
     awaitingPayment: orders.filter((o) => o.status === 'AWAITING_PAYMENT').length,
@@ -58,6 +65,12 @@ export async function sellerInsight() {
 function ruleInsights(s) {
   const out = [];
   if (s.unmetDemand.length) out.push(`Restock or source "${s.unmetDemand[0].term}" — buyers asked for it ${s.unmetDemand[0].count}× while it was out of stock.`);
+  if (s.giftOrders) {
+    const share = s.revenueNgn ? Math.round((s.giftRevenueNgn / s.revenueNgn) * 100) : 0;
+    const abroad = Object.keys(s.revenueByCurrency).filter((c) => c !== 'USD');
+    out.push(`Market to Nigerians abroad — family gifts are ${share}% of your sales${abroad.length ? `, paid in ${abroad.join(' and ')}` : ''}.`);
+  }
+  if (s.deliveriesPending) out.push(`Dispatch ${s.deliveriesPending} paid order${s.deliveriesPending > 1 ? 's' : ''} still waiting for delivery.`);
   if (s.abandonedCheckouts) out.push(`Follow up on ${s.abandonedCheckouts} unpaid checkout${s.abandonedCheckouts > 1 ? 's' : ''} — offer a PayPal invoice so they can pay later.`);
   if (s.topProducts[0]) out.push(`Feature ${s.topProducts[0].name} on your homepage — it's your best seller (${s.topProducts[0].qty} sold).`);
   const topAsk = s.topSearches.find((t) => !s.unmetDemand.some((u) => u.term.toLowerCase().includes(t.term) || t.term.includes(u.term.toLowerCase().split(' (')[0])));

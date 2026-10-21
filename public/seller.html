@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/vendor/ag-grid-styles/ag-grid.min.css" />
+  <link rel="stylesheet" href="/vendor/ag-grid-styles/ag-theme-quartz-no-font.min.css" />
   <style>
     .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 48px; }
     .top { background: var(--indigo); color: #fff; }
@@ -37,7 +39,48 @@
     .noticed .btn { background: var(--ochre); color: var(--ink); }
     .noticed .btn:hover { background: #ebb43a; }
 
-    .grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-top: 20px; }
+
+    /* Orders & deliveries — AG Grid in the store's colours */
+    .orders { margin-top: 20px; }
+    .orders .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .orders .head p { margin: 0; color: var(--ink-2); font-size: 14px; }
+    #orders-grid { width: 100%; }
+    #orders-grid .ag-center-cols-viewport { min-height: 120px; }
+    .wrap-cell { line-height: 1.35 !important; padding-top: 10px; padding-bottom: 10px; }
+    .step-select {
+      font: inherit; font-weight: 700; font-size: 13.5px; border-radius: 999px; padding: 5px 28px 5px 12px; border: 0; cursor: pointer;
+      appearance: none; background: var(--wash) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%234a5170' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 11px center;
+    }
+    .step-select.PACKED { background-color: var(--ochre-soft); color: #7a5300; }
+    .step-select.OUT_FOR_DELIVERY { background-color: var(--wash-2); color: var(--indigo); }
+    .step-select.DELIVERED { background-color: var(--leaf-soft); color: var(--leaf); }
+    .ag-theme-quartz {
+      --ag-font-family: var(--body);
+      --ag-font-size: 14px;
+      --ag-foreground-color: var(--ink);
+      --ag-header-foreground-color: var(--ink-2);
+      --ag-header-background-color: var(--wash);
+      --ag-border-color: var(--wash-2);
+      --ag-row-border-color: var(--wash-2);
+      --ag-active-color: var(--indigo);
+      --ag-selected-row-background-color: var(--wash-2);
+      --ag-row-hover-color: #f4f6fc;
+      --ag-wrapper-border-radius: var(--r-md);
+      --ag-cell-horizontal-padding: 12px;
+    }
+    .ag-theme-quartz .ag-header-cell-text { font-weight: 700; }
+    .cell-two { display: flex; flex-direction: column; line-height: 1.25; justify-content: center; height: 100%; }
+    .cell-two small { color: var(--ink-2); font-size: 12.5px; }
+    .gift-tag { display: inline-block; margin-left: 6px; font-size: 11.5px; font-weight: 700; padding: 0 7px; border-radius: 999px; background: var(--ochre-soft); color: #7a5300; }
+    .step { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+    .step::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+    .step.PACKED::before { background: var(--ochre); }
+    .step.OUT_FOR_DELIVERY::before { background: var(--indigo-2); }
+    .step.DELIVERED::before { background: var(--leaf); }
+    .step.locked { color: var(--ink-2); font-weight: 400; }
+    .step.locked::before { display: none; }
+    .editable-hint { color: var(--ink-2); font-size: 12px; margin-left: 4px; }
     .panel { background: var(--paper); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 18px 20px; min-width: 0; }
     .panel h2 { margin: 0 0 12px; font: 700 19px/1.2 var(--display); letter-spacing: -0.01em; }
     table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
@@ -66,8 +109,10 @@
     .bubble.user { align-self: flex-end; background: var(--indigo); color: #fff; }
     .bubble.assistant { align-self: flex-start; background: var(--paper); }
 
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
     @media (max-width: 860px) {
-      .hero, .grid { grid-template-columns: 1fr; }
+      .hero { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .convos { grid-template-columns: 1fr; }
       .list { border-right: 0; max-height: 240px; }
     }
@@ -92,13 +137,13 @@
     <section class="hero">
       <div class="money">
         <h2>Paid through PayPal</h2>
-        <div class="big" id="revenue">$0</div>
-        <p class="fx" id="revenue-ngn">₦0</p>
+        <div class="big" id="revenue">₦0</div>
+        <p class="fx" id="revenue-split">No sales yet</p>
         <dl class="kpis">
           <div><dt>Paid orders</dt><dd id="k-orders">0</dd></div>
+          <div><dt>Gifts from abroad</dt><dd id="k-gifts">0</dd></div>
           <div><dt>Chats that bought</dt><dd id="k-conv">0%</dd></div>
-          <div><dt>Average order</dt><dd id="k-aov">$0</dd></div>
-          <div><dt>Waiting for payment</dt><dd id="k-wait">0</dd></div>
+          <div><dt>To deliver</dt><dd id="k-deliver">0</dd></div>
         </dl>
       </div>
       <section class="noticed" aria-live="polite">
@@ -111,29 +156,35 @@
       </section>
     </section>
 
+    <section class="panel orders">
+      <div class="head">
+        <h2>Orders and deliveries</h2>
+        <p>Change a paid order's delivery step and the buyer's chat is told straight away.</p>
+      </div>
+      <div id="orders-grid" class="ag-theme-quartz"></div>
+    </section>
+
     <div class="grid">
       <section class="panel">
-        <h2>Orders</h2>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Order</th><th>Items</th><th>Paid by</th><th>Status</th><th class="num">Total</th></tr></thead>
-            <tbody id="orders"></tbody>
-          </table>
-        </div>
-        <p class="empty" id="orders-empty">No orders yet. Share your chat link and they'll appear here.</p>
+        <h2>Asked for, not in stock</h2>
+        <ul class="bars want" id="unmet"></ul>
+        <p class="empty" id="unmet-empty">Nothing missed so far.</p>
       </section>
-      <div class="side">
-        <section class="panel">
-          <h2>Asked for, not in stock</h2>
-          <ul class="bars want" id="unmet"></ul>
-          <p class="empty" id="unmet-empty">Nothing missed so far.</p>
-        </section>
-        <section class="panel">
-          <h2>What buyers ask for</h2>
-          <ul class="bars" id="searches"></ul>
-          <p class="empty" id="searches-empty">No searches yet.</p>
-        </section>
-      </div>
+      <section class="panel">
+        <h2>What buyers ask for</h2>
+        <ul class="bars" id="searches"></ul>
+        <p class="empty" id="searches-empty">No searches yet.</p>
+      </section>
+      <section class="panel">
+        <h2>Delivering to</h2>
+        <ul class="bars" id="cities"></ul>
+        <p class="empty" id="cities-empty">No deliveries yet.</p>
+      </section>
+      <section class="panel">
+        <h2>Where chats come from</h2>
+        <ul class="bars" id="sources"></ul>
+        <p class="empty" id="sources-empty">Share links like <code>?src=whatsapp</code> to see this.</p>
+      </section>
     </div>
 
     <section class="panel convos">
@@ -145,6 +196,7 @@
     </section>
   </main>
 
+  <script src="/vendor/ag-grid/ag-grid-community.min.noStyle.js"></script>
   <script src="/seller.js" type="module"></script>
 </body>
 </html>

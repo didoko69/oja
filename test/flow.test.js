@@ -126,10 +126,93 @@ try {
   await test('seller stats and insights', async () => {
     const { data: stats } = await call('GET', '/api/seller/stats');
     assert.equal(stats.paidOrders, 1);
-    assert.ok(stats.revenue > 0);
+    assert.ok(stats.revenueNgn > 0);
     assert.ok(stats.unmetDemand.some((u) => /iphone/i.test(u.term)));
     const { data: ins } = await call('POST', '/api/seller/insight');
     assert.ok(ins.insights.length >= 1);
+  });
+
+  /* ---------- Buy for family back home ---------- */
+
+  const { data: gift } = await call('POST', '/api/session', { locale: 'en-GB', source: 'whatsapp' });
+  const g = async (message) => { await sleep(750); return (await call('POST', '/api/chat', { sessionId: gift.sessionId, message })).data; };
+
+  await test('UK browser gets pounds by default', async () => {
+    assert.equal(gift.currency, 'GBP');
+  });
+
+  await test('gift request: searches within a pound budget and remembers the city', async () => {
+    out = await g("I'm in London and I want a phone for my mum in Lokoja, about £120");
+    const cards = out.ui.find((u) => u.type === 'products').products;
+    assert.ok(cards.length >= 1);
+    assert.ok(cards.every((p) => p.category === 'phones' && p.currency === 'GBP' && p.price <= 132));
+    assert.match(out.reply, /mum/);
+  });
+
+  await test('adding an item asks for the missing delivery details', async () => {
+    out = await g('add the first one');
+    assert.equal(out.cart.currency, 'GBP');
+    assert.match(out.reply, /full name, phone number and street address/);
+  });
+
+  await test('checkout is blocked until the address is complete', async () => {
+    out = await g('checkout');
+    assert.ok(!out.ui.some((u) => u.type === 'checkout'));
+    assert.match(out.reply, /need their/);
+  });
+
+  await test('one-line Nigerian address is understood', async () => {
+    out = await g('Grace Idoko, 0803 123 4567, 12 Ganaja Road');
+    const d = out.ui.find((u) => u.type === 'delivery').delivery;
+    assert.deepEqual([d.recipientName, d.recipientPhone, d.address, d.city, d.state], ['Grace Idoko', '+2348031234567', '12 Ganaja Road', 'Lokoja', 'Kogi']);
+  });
+
+  await test('message language and sender name', async () => {
+    await g('in pidgin');
+    out = await g('my name is Tunde');
+    assert.match(out.reply, /Tunde/);
+  });
+
+  let giftCheckout;
+  await test('gift checkout is in pounds and ships to the recipient', async () => {
+    out = await g('checkout');
+    giftCheckout = out.ui.find((u) => u.type === 'checkout');
+    assert.equal(giftCheckout.totals.currency, 'GBP');
+    assert.equal(giftCheckout.delivery.city, 'Lokoja');
+    assert.match(out.reply, /£\d/);
+  });
+
+  await test('payment produces a WhatsApp message for the family', async () => {
+    const { data } = await call('POST', '/api/paypal/capture', { sessionId: gift.sessionId, paypalOrderId: giftCheckout.paypalOrderId });
+    assert.equal(data.status, 'PAID');
+    assert.match(data.family.text, /Grace/);
+    assert.match(data.family.text, /Tunde/);
+    assert.match(data.family.text, /don/); // Pidgin template
+    assert.ok(data.family.waUrl.startsWith('https://wa.me/2348031234567?text='));
+  });
+
+  await test('seller moves the delivery along and the buyer can track it', async () => {
+    const { status } = await call('POST', `/api/seller/orders/${giftCheckout.orderId}/delivery`, { status: 'OUT_FOR_DELIVERY' });
+    assert.equal(status, 200);
+    out = await g('has my mum received it?');
+    assert.match(out.reply, /out for delivery/i);
+  });
+
+  await test('unpaid orders cannot be dispatched', async () => {
+    const { data: orders } = await call('GET', '/api/seller/orders');
+    const unpaid = orders.find((o) => o.status !== 'PAID');
+    if (unpaid) {
+      const { status } = await call('POST', `/api/seller/orders/${unpaid.id}/delivery`, { status: 'PACKED' });
+      assert.equal(status, 409);
+    }
+  });
+
+  await test('seller stats count gifts, currencies and sources', async () => {
+    const { data: stats } = await call('GET', '/api/seller/stats');
+    assert.equal(stats.giftOrders, 1);
+    assert.ok(stats.revenueByCurrency.GBP > 0);
+    assert.ok(stats.sources.some((x) => x.term === 'whatsapp'));
+    assert.ok(stats.deliveryCities.some((x) => x.term === 'Lokoja'));
   });
 
   console.log(`\n${passed} tests passed`);

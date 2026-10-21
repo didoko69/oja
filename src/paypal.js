@@ -66,7 +66,22 @@ const safeText = (res) => res.text().catch(() => '');
 /* ---------------- Orders v2 ---------------- */
 
 /** Create a CAPTURE order from server-computed totals. Returns { id, status, approveUrl }. */
-export async function createOrder({ totals, localOrderId, storeName }) {
+/** PayPal shipping block for a Nigerian recipient (buy-for-family orders). */
+function shippingFor(delivery) {
+  if (!delivery?.address) return null;
+  return {
+    type: 'SHIPPING',
+    name: { full_name: delivery.recipientName.slice(0, 300) },
+    address: {
+      address_line_1: delivery.address.slice(0, 300),
+      admin_area_2: delivery.city.slice(0, 120),
+      admin_area_1: delivery.state.slice(0, 300),
+      country_code: 'NG',
+    },
+  };
+}
+
+export async function createOrder({ totals, localOrderId, storeName, delivery }) {
   if (isMock()) {
     const id = 'MOCK-' + newId('').slice(1).toUpperCase();
     return { id, status: 'CREATED', approveUrl: null };
@@ -94,13 +109,15 @@ export async function createOrder({ totals, localOrderId, storeName }) {
           unit_amount: { currency_code: cur, value: money(i.unitPrice) },
           category: 'PHYSICAL_GOODS',
         })),
+        ...(shippingFor(delivery) ? { shipping: shippingFor(delivery) } : {}),
       },
     ],
     payment_source: {
       paypal: {
         experience_context: {
           brand_name: storeName.slice(0, 127),
-          shipping_preference: 'GET_FROM_FILE',
+          // Gift orders ship to the family member in Nigeria, not to the payer's own address.
+          shipping_preference: shippingFor(delivery) ? 'SET_PROVIDED_ADDRESS' : 'GET_FROM_FILE',
           user_action: 'PAY_NOW',
         },
       },

@@ -1,5 +1,5 @@
 import { modes } from '../config.js';
-import { addTranscript, cartTotals } from '../store.js';
+import { addTranscript, sessionTotals } from '../store.js';
 import { runGemini, noteForGemini } from './gemini.js';
 import { runOffline } from './offline.js';
 
@@ -27,7 +27,7 @@ export async function runAgent(session, userText) {
   }
 
   addTranscript(session, 'assistant', out.reply);
-  return { ...out, brain, cart: cartTotals(session.cart) };
+  return { ...out, brain, cart: sessionTotals(session) };
 }
 
 /** Record a backend fact (payment captured, item added from a card) so the agent knows next turn. */

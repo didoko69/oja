@@ -1,4 +1,4 @@
-import { config } from './config.js';
+import { fromNgn, normCurrency } from './money.js';
 
 /*
  * Danzora catalog — real products at real Nigerian market prices (naira).
@@ -151,9 +151,6 @@ const raw = [
   },
 ];
 
-/** USD price used for PayPal checkout, rounded to whole dollars. */
-export const toUsd = (ngn) => Math.max(1, Math.round(ngn / config.store.ngnPerUsd));
-export const toNgn = (usd) => Math.round((usd * config.store.ngnPerUsd) / 100) * 100;
 
 /*
  * Product photos: freely licensed images from Wikimedia Commons, credited on each card.
@@ -165,7 +162,7 @@ const commonsPage = (file) => `https://commons.wikimedia.org/wiki/File:${encodeU
 
 export const products = raw.map((p) => ({
   ...p,
-  price: toUsd(p.priceNgn),
+  price: fromNgn(p.priceNgn, 'USD'), // USD reference; checkout uses the buyer's currency
   image: p.image || (p.photo ? commons(p.photo.file) : null),
   imageCredit: p.photo ? { url: commonsPage(p.photo.file), note: p.photo.note || null } : null,
 }));
@@ -210,7 +207,8 @@ function normalise(s) {
  * Keyword + filter search. Returns products sorted by relevance, then rating.
  * Out-of-stock items are included (flagged) so the agent can say so honestly.
  */
-export function searchProducts({ query = '', category, maxPrice, minPrice, inStockOnly = false, limit = 4 } = {}) {
+/** Budgets are in naira (callers convert from the buyer's currency first). */
+export function searchProducts({ query = '', category, maxPriceNgn, minPriceNgn, inStockOnly = false, limit = 4 } = {}) {
   const words = normalise(query)
     .split(' ')
     .filter((w) => w && !STOP.has(w))
@@ -222,8 +220,8 @@ export function searchProducts({ query = '', category, maxPrice, minPrice, inSto
 
   const scored = products
     .filter((p) => (cat ? p.category === cat || p.category === cat + 's' : true))
-    .filter((p) => (maxPrice != null ? p.price <= Number(maxPrice) : true))
-    .filter((p) => (minPrice != null ? p.price >= Number(minPrice) : true))
+    .filter((p) => (maxPriceNgn != null ? p.priceNgn <= Number(maxPriceNgn) : true))
+    .filter((p) => (minPriceNgn != null ? p.priceNgn >= Number(minPriceNgn) : true))
     .filter((p) => (inStockOnly ? p.stock > 0 : true))
     .map((p) => {
       const hay = normalise([p.name, p.category, p.summary, ...p.tags, ...Object.values(p.specs)].join(' '));
@@ -247,12 +245,14 @@ export function searchProducts({ query = '', category, maxPrice, minPrice, inSto
 }
 
 /** The shape the AI and the UI see. Keeps internal fields out. */
-export function publicProduct(p) {
+export function publicProduct(p, currency = 'USD') {
+  const cur = normCurrency(currency);
   return {
     id: p.id,
     name: p.name,
     category: p.category,
-    price: p.price,
+    price: fromNgn(p.priceNgn, cur),
+    currency: cur,
     priceNgn: p.priceNgn,
     inStock: p.stock > 0,
     stockLeft: p.stock,

@@ -8,13 +8,25 @@ export const config = {
   store: {
     name: env('STORE_NAME', 'Danzora'),
     tagline: env('STORE_TAGLINE', 'Gadgets that work as hard as you do'),
-    currency: 'USD',
-    // Official NFEM rate, 19 Oct 2026. Update before the demo.
-    ngnPerUsd: Number(env('NGN_PER_USD', '1333.54')),
-    // Free shipping at or above this subtotal; flat fee below it.
-    freeShippingFrom: Number(env('FREE_SHIPPING_FROM', '150')),
-    flatShipping: Number(env('FLAT_SHIPPING', '5')),
+    city: env('STORE_CITY', 'Lokoja'),
+    // Nationwide delivery inside Nigeria, priced in naira. Free above the threshold.
+    deliveryFeeNgn: Number(env('DELIVERY_FEE_NGN', '6000')),
+    freeDeliveryFromNgn: Number(env('FREE_DELIVERY_FROM_NGN', '200000')),
+    deliveryDays: env('DELIVERY_DAYS', '2–4 working days'),
   },
+
+  /*
+   * Naira per unit of each checkout currency (PayPal can't charge in naira).
+   * USD: official NFEM rate, 19 Oct 2026. GBP/EUR: Aug 2026 NFEM cross rates applied
+   * to the Oct USD rate. CAD: estimated from USD/CAD. Update before the demo.
+   */
+  fx: {
+    USD: Number(env('NGN_PER_USD', '1333.54')),
+    GBP: Number(env('NGN_PER_GBP', '1818')),
+    EUR: Number(env('NGN_PER_EUR', '1555')),
+    CAD: Number(env('NGN_PER_CAD', '973')),
+  },
+  defaultCurrency: 'USD',
 
   ai: {
     geminiKey: env('GEMINI_API_KEY'),
