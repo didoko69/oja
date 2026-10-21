@@ -91,7 +91,8 @@ export async function runOffline(session, text) {
   const sender = session.delivery?.isGift ? senderNameFrom(text) : null;
   if (session.delivery?.isGift && (lang || sender)) {
     await call('set_delivery', { ...(lang ? { message_language: lang.toLowerCase() } : {}), ...(sender ? { sender_name: sender } : {}) });
-    if (msg.split(' ').length <= 6 && !/\b(check ?out|pay)\b/.test(msg)) {
+    // Only answer here when the message is just about the message (not also a product or checkout request).
+    if (!/\b(check ?out|pay|phone|laptop|earbuds?|speaker|watch|power ?bank|add|cart|compare|invoice|under|about £|£|\$|€)\b/.test(msg)) {
       const bits = [lang && `the WhatsApp message will be in ${lang[0].toUpperCase()}${lang.slice(1).toLowerCase()}`, sender && `I'll sign it from ${sender}`].filter(Boolean);
       return done(`${say.join(' ')} Done — ${bits.join(', and ')}. Say "checkout" when you're ready to pay.`.trim());
     }
