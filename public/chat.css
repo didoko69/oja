@@ -137,3 +137,12 @@
 .receipt .amt { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
 .receipt .amt .ngn { font-size: 12px; color: var(--ink-2); }
 .receipt .fx { margin: 4px 0 0; text-align: right; font-size: 13px; color: var(--ink-2); }
+
+/* Product photos: shown whole on white, with the photo credit tucked in the corner. */
+.card .thumb.photo { position: relative; background: #fff; height: 150px; }
+.card .thumb.photo img { object-fit: contain; padding: 8px; }
+.card .thumb .credit {
+  position: absolute; right: 6px; bottom: 4px; font-size: 10.5px; line-height: 1.2; color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.85); padding: 1px 5px; border-radius: 4px; text-decoration: none; max-width: calc(100% - 12px);
+}
+.card .thumb .credit:hover { text-decoration: underline; }

@@ -22,7 +22,7 @@ const raw = [
     summary: 'The cheapest solid everyday phone in the store.',
   },
   {
-    id: 'ph-galaxy-a07', name: 'Samsung Galaxy A07 (4GB/64GB)', category: 'phones', priceNgn: 134800, stock: 10, rating: 4.3,
+    id: 'ph-galaxy-a07', photo: { file: 'Samsung_Galaxy_A07_2026.jpg' }, name: 'Samsung Galaxy A07 (4GB/64GB)', category: 'phones', priceNgn: 134800, stock: 10, rating: 4.3,
     tags: ['android', 'samsung', 'budget', 'camera', 'big battery'],
     specs: { screen: '6.7" PLS LCD 90Hz', ram: '4GB', storage: '64GB', camera: '50MP dual rear, 8MP selfie', battery: '5000mAh' },
     summary: 'Samsung reliability and a 50MP camera on a budget.',
@@ -40,7 +40,7 @@ const raw = [
     summary: '50MP camera and a 120Hz screen under ₦150k.',
   },
   {
-    id: 'ph-galaxy-a06', name: 'Samsung Galaxy A06 (4GB/128GB)', category: 'phones', priceNgn: 146000, stock: 9, rating: 4.4,
+    id: 'ph-galaxy-a06', photo: { file: 'Samsung_Galaxy_A06_5G_2025.jpg', note: '5G model shown' }, name: 'Samsung Galaxy A06 (4GB/128GB)', category: 'phones', priceNgn: 146000, stock: 9, rating: 4.4,
     tags: ['android', 'samsung', 'budget', 'camera', 'big battery', 'memory card'],
     specs: { screen: '6.7" PLS LCD 90Hz', ram: '4GB', storage: '128GB + microSD', camera: '50MP + 2MP rear, 8MP selfie', battery: '5000mAh' },
     summary: 'Samsung with 128GB and a memory card slot for all your photos.',
@@ -58,13 +58,13 @@ const raw = [
     summary: '64MP camera, 256GB and 45W charging — the best pick for content creators.',
   },
   {
-    id: 'ph-hot50', name: 'Infinix Hot 50 (8GB/128GB)', category: 'phones', priceNgn: 210000, stock: 6, rating: 4.4,
+    id: 'ph-hot50', photo: { file: 'Infinix_HOT_50_4G.jpg' }, name: 'Infinix Hot 50 (8GB/128GB)', category: 'phones', priceNgn: 210000, stock: 6, rating: 4.4,
     tags: ['android', 'camera', 'gaming', 'big battery', 'memory card'],
     specs: { screen: '6.7" HD+', ram: '8GB (up to 16GB)', storage: '128GB + microSD up to 1TB', camera: '48MP main, 8MP selfie', battery: '5000mAh' },
     summary: '8GB RAM for heavy multitasking and gaming.',
   },
   {
-    id: 'ph-iphone15pm', name: 'iPhone 15 Pro Max (256GB)', category: 'phones', priceNgn: 1450000, stock: 0, rating: 4.9,
+    id: 'ph-iphone15pm', photo: { file: 'Back_view_of_iPhone_15_Pro_Max_Natural_Titanium.jpg' }, name: 'iPhone 15 Pro Max (256GB)', category: 'phones', priceNgn: 1450000, stock: 0, rating: 4.9,
     tags: ['ios', 'apple', 'iphone', 'camera', 'premium', 'content creation'],
     specs: { screen: '6.7" Super Retina XDR 120Hz', chip: 'A17 Pro', storage: '256GB', camera: '48MP main, 5x telephoto' },
     summary: 'Flagship iPhone with a pro camera.', estimatedPrice: true,
@@ -72,7 +72,7 @@ const raw = [
 
   /* ---------- laptops (NaijaTechGuide ranges) ---------- */
   {
-    id: 'lp-thinkpad', name: 'Lenovo ThinkPad T480 (UK used)', category: 'laptops', priceNgn: 380000, stock: 7, rating: 4.6,
+    id: 'lp-thinkpad', photo: { file: 'ThinkPad_T480_and_T470s.jpg', note: 'T480 shown with a T470s' }, name: 'Lenovo ThinkPad T480 (UK used)', category: 'laptops', priceNgn: 380000, stock: 7, rating: 4.6,
     tags: ['windows', 'programming', 'coding', 'student', 'durable', 'uk used'],
     specs: { cpu: 'Intel Core i5 8th gen', ram: '8GB', storage: '256GB SSD', screen: '14" FHD', battery: 'dual battery' },
     summary: 'Tough, great keyboard, long battery — the developer favourite on a budget.',
@@ -90,7 +90,7 @@ const raw = [
     summary: 'Brand-new with warranty and a big 15.6" screen.',
   },
   {
-    id: 'lp-mba-m1', name: 'MacBook Air M1 (UK used)', category: 'laptops', priceNgn: 650000, stock: 3, rating: 4.9,
+    id: 'lp-mba-m1', photo: { file: 'Macbook_Air_2020_(M1)_-_1.jpg' }, name: 'MacBook Air M1 (UK used)', category: 'laptops', priceNgn: 650000, stock: 3, rating: 4.9,
     tags: ['macos', 'apple', 'programming', 'video editing', 'long battery', 'content creation'],
     specs: { cpu: 'Apple M1', ram: '8GB', storage: '256GB SSD', screen: '13.3" Retina', battery: 'up to 18 hrs' },
     summary: 'Silent, fast and an all-day battery. Handles video editing.',
@@ -116,7 +116,7 @@ const raw = [
     summary: 'The cheapest wireless earbuds we stock.',
   },
   {
-    id: 'au-boya-mic', name: 'BOYA BY-M1 Lavalier Mic', category: 'audio', priceNgn: 8000, stock: 30, rating: 4.4,
+    id: 'au-boya-mic', photo: { file: 'Boya_Dual_Omni-Directional_Lavalier_Mic_01.png', note: 'dual-mic model shown' }, name: 'BOYA BY-M1 Lavalier Mic', category: 'audio', priceNgn: 8000, stock: 30, rating: 4.4,
     tags: ['microphone', 'content creation', 'youtube', 'tiktok', 'video'],
     specs: { type: 'Clip-on lavalier microphone', cable: '6m', connector: '3.5mm with adapter' },
     summary: 'Clear voice for YouTube and TikTok videos.', estimatedPrice: true,
@@ -124,7 +124,7 @@ const raw = [
 
   /* ---------- power ---------- */
   {
-    id: 'pw-oraimo-20k', name: 'Oraimo Traveler 20000mAh Power Bank', category: 'power', priceNgn: 22000, stock: 50, rating: 4.5,
+    id: 'pw-oraimo-20k', photo: { file: 'Oraimo_power_bank.jpg', note: 'Oraimo power bank' }, name: 'Oraimo Traveler 20000mAh Power Bank', category: 'power', priceNgn: 22000, stock: 50, rating: 4.5,
     tags: ['power bank', 'fast charging', 'nepa', 'travel'],
     specs: { capacity: '20000mAh', output: 'Fast charge', ports: 'USB-C + USB-A' },
     summary: 'Charges a phone about 4 times. A must for power cuts.', estimatedPrice: true,
@@ -155,7 +155,20 @@ const raw = [
 export const toUsd = (ngn) => Math.max(1, Math.round(ngn / config.store.ngnPerUsd));
 export const toNgn = (usd) => Math.round((usd * config.store.ngnPerUsd) / 100) * 100;
 
-export const products = raw.map((p) => ({ ...p, price: toUsd(p.priceNgn) }));
+/*
+ * Product photos: freely licensed images from Wikimedia Commons, credited on each card.
+ * Only exact (or clearly labelled near-identical) models get a photo; the rest show an icon.
+ * Replace with the store's own photos by setting `image` to any URL.
+ */
+const commons = (file, width = 480) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${width}`;
+const commonsPage = (file) => `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file)}`;
+
+export const products = raw.map((p) => ({
+  ...p,
+  price: toUsd(p.priceNgn),
+  image: p.image || (p.photo ? commons(p.photo.file) : null),
+  imageCredit: p.photo ? { url: commonsPage(p.photo.file), note: p.photo.note || null } : null,
+}));
 
 const byId = new Map(products.map((p) => [p.id, p]));
 
@@ -247,6 +260,7 @@ export function publicProduct(p) {
     summary: p.summary,
     specs: p.specs,
     image: p.image || null,
+    imageCredit: p.imageCredit || null,
   };
 }
 

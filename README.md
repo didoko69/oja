@@ -88,6 +88,8 @@ The demo catalog is 21 real products sold in Nigeria, priced in naira from Niger
 - Earbuds: [NigerianQueries price list](https://nigerianqueries.com/cheapest-quality-earbuds-in-nigeria/)
 - A few accessories use typical Lagos market prices (marked `estimatedPrice` in `src/catalog.js`).
 
+Product photos are freely licensed images from [Wikimedia Commons](https://commons.wikimedia.org), credited and linked on each product card. Only exact models (or near-identical ones, labelled) get a photo; the rest show a category icon. A store can use its own photos by setting `image` on any product.
+
 PayPal sandbox checks out in USD, so prices convert at the official NFEM rate (₦1,333.54 per $1, 19 Oct 2026). Change `NGN_PER_USD` in `.env` to update it.
 
 ## Project structure

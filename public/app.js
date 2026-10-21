@@ -121,8 +121,17 @@ const GLYPH = {
   accessories: '<circle cx="24" cy="20" r="12"/><circle cx="24" cy="20" r="6"/><path d="M24 32v10M18 44h12"/>',
 };
 
+function glyph(p) {
+  return `<svg viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[p.category] || GLYPH.accessories}</svg>`;
+}
+
 function thumb(p) {
-  if (p.image) return `<div class="thumb"><img src="${esc(p.image)}" alt="" loading="lazy"></div>`;
+  if (p.image) {
+    const credit = p.imageCredit
+      ? `<a class="credit" href="${esc(p.imageCredit.url)}" target="_blank" rel="noopener">Photo: Wikimedia Commons${p.imageCredit.note ? ` (${esc(p.imageCredit.note)})` : ''}</a>`
+      : '';
+    return `<div class="thumb photo"><img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" data-cat="${esc(p.category)}">${credit}</div>`;
+  }
   return `<div class="thumb"><svg viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[p.category] || GLYPH.accessories}</svg></div>`;
 }
 
@@ -146,6 +155,12 @@ function renderProducts({ products }) {
         </div>
       </div>`;
     card.querySelector('.add')?.addEventListener('click', (e) => addFromCard(p, e.currentTarget));
+    // If a photo can't load, fall back to the category icon instead of a broken image.
+    card.querySelector('.thumb img')?.addEventListener('error', (e) => {
+      const box = e.currentTarget.parentElement;
+      box.classList.remove('photo');
+      box.innerHTML = glyph(p);
+    }, { once: true });
     strip.append(card);
   }
   thread.append(strip);
